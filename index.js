@@ -1,34 +1,16 @@
-let persons = [
-    {
-        "name": "Arto Hellas",
-        "number": "848-123456",
-        "id": 1
-    },
-    {
-        "name": "Ada Lovelace",
-        "number": "39-44-5323523",
-        "id": 2
-    },
-    {
-        "name": "Dan Abramov",
-        "number": "12-43-234345",
-        "id": 3
-    },
-    {
-        "name": "Mary Poppendieck",
-        "number": "39-23-6423122",
-        "id": 4
-    }
-]
-
 const express = require('express')
-const app = express()
 const morgan = require('morgan')
 const cors = require('cors')
+const mongoose = require('mongoose')
+const Person = require('./models/person')
+require('dotenv').config()
+
+mongoose.set('useFindAndModify', false)
+const app = express()
 
 app.use(express.static('build'))
-app.use(cors())
 app.use(express.json()) 
+app.use(cors())
 
 app.use(morgan(function (tokens, req, res) {
     let msg=  [
@@ -43,32 +25,35 @@ app.use(morgan(function (tokens, req, res) {
     }
     return msg
 }))
-
-app.get('/', (req, res) => {
-    res.send('<h1>Hello there</h1>')
-})
   
-app.get('/api/persons', (req, res) => {
-    res.json(persons)
+app.get('/api/persons', (req, res, next) => {
+    Person.find({}).then(people => {
+        res.json(people)
+    })
 })
 
-app.get('/api/persons/:id', (req, res) => {
+app.get('/api/persons/:id', (req, res, next) => {
     const id = req.params.id
-    const person = persons.find( p => p.id === Number(id))
-    if (person){
-        res.json(person)
-    } else{
-        res.status(404).end()
-    }
+    Person.findById(id).then(person => {
+        if (person){
+            res.json(person)
+        } else {
+            res.status(404).end()
+        }
+    }).catch(e => next(e))
 })
 
-app.delete('/api/persons/:id', (req, res) => {
+app.delete('/api/persons/:id', (req, res, next) => {
     const id = req.params.id
-    persons = persons.filter( p => p.id !== Number(id))
-    res.status(204).end()
+
+    Person.findByIdAndRemove(id)
+    .then(result => {
+      res.status(204).end()
+    })
+    .catch(error => next(error))
 })
 
-app.post('/api/persons', (req, res) => {
+app.post('/api/persons', (req, res, next) => {
     if (!req.body.name) {
         return res.status(400).json({ 
           error: 'Name missing' 
@@ -77,33 +62,67 @@ app.post('/api/persons', (req, res) => {
         return res.status(400).json({ 
             error: 'Number missing' 
         })
-    } else if (persons.find(p => p.name === req.body.name)){
-        return res.status(400).json({ 
-            error: 'The name is already in the phonebook' 
+    } else {
+        Person.find({name: req.body.name}).then(person => {
+            if (person.length){
+                return res.status(400).json({ 
+                    error: 'The name is already in the phonebook' 
+                })
+            }else {
+                const newPerson = new Person({
+                    name: req.body.name,
+                    number: req.body.number
+                })
+                newPerson.save().then( savedPerson =>{
+                    res.json(savedPerson)
+                })
+            }
         })
     }
-
-    const person = {
-        name: req.body.name,
-        number: req.body.number,
-        id: getRandomInt(10000000)
-    }
-    persons = persons.concat(person)
-    res.json(person)
 })
 
-app.get('/info', (req, res) => {
-    let text = ''
-    text += `The phonebook has ${persons.length} contacts <br>`
-    text += Date().toString()
-    res.send(text)
+app.get('/info', (req, res, next) => {
+    Person.find({}).then(persons => {
+        let text = ''
+        text += `The phonebook has ${persons.length} contacts <br>`
+        text += Date().toString()
+        res.send(text)
+    })
+})
+
+app.put('/api/persons/:id', (request, response, next) => {
+    const body = request.body
+    
+    const person = {
+      name: body.name,
+      number: body.number
+    }
+    Person.findByIdAndUpdate(request.params.id, person, { new: true })
+      .then(updated => {
+        response.json(updated)
+      })
+      .catch(error => next(error))
 })
   
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
 })
 
-function getRandomInt(max) {
-    return Math.floor(Math.random() * Math.floor(max));
+const unknownEndpoint = (request, response) => {
+    response.status(404).send({ error: 'unknown endpoint' })
 }
+  
+app.use(unknownEndpoint)
+
+const errorHandler = (error, request, response, next) => {
+    console.error(error.message)
+  
+    if (error.name === 'CastError') {
+      return response.status(400).send({ error: 'malformatted id' })
+    }
+  
+    next(error)
+}
+  
+app.use(errorHandler)
