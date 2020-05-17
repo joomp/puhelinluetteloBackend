@@ -4,7 +4,7 @@ const uniqueValidator = require('mongoose-unique-validator');
 mongoose.set('useCreateIndex', true);
 const url = process.env.MONGODB_URI
 console.log('Connecting to: ', url)
-mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true }).then(result => {
+mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true }).then(() => {
   console.log('connected to MongoDB')
 })
 .catch((error) => {
@@ -45,15 +45,14 @@ if (process.argv.length === 3){
         })
         mongoose.connection.close()
     })
-} else if (process.argv.length == 5){
+} else if (process.argv.length === 5){
     const name = process.argv[3]
     const number = process.argv[4]
-    
     const person = new Person({
         name: name,
         number: number
     })
-    person.save().then(response => {
+    person.save().then(() => {
         console.log(`Added ${name} number ${number} to the phonebook`)
         mongoose.connection.close()
     })

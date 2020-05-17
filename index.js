@@ -9,7 +9,7 @@ mongoose.set('useFindAndModify', false)
 const app = express()
 
 app.use(express.static('build'))
-app.use(express.json()) 
+app.use(express.json())
 app.use(cors())
 
 app.use(morgan(function (tokens, req, res) {
@@ -20,13 +20,12 @@ app.use(morgan(function (tokens, req, res) {
       tokens.res(req, res, 'content-length'), '-',
       tokens['response-time'](req, res), 'ms'
     ].join(' ')
-    if (tokens.method(req, res) == "POST"){
+    if (tokens.method(req, res) === "POST"){
         msg += ' ' + JSON.stringify(req.body)
     }
     return msg
 }))
-  
-app.get('/api/persons', (req, res, next) => {
+app.get('/api/persons', (req, res) => {
     Person.find({}).then(people => {
         res.json(people)
     })
@@ -47,7 +46,7 @@ app.delete('/api/persons/:id', (req, res, next) => {
     const id = req.params.id
 
     Person.findByIdAndRemove(id)
-    .then(result => {
+    .then(() => {
       res.status(204).end()
     })
     .catch(error => next(error))
@@ -58,12 +57,12 @@ app.post('/api/persons', (req, res, next) => {
         name: req.body.name,
         number: req.body.number
     })
-    newPerson.save().then( savedPerson =>{
+    newPerson.save().then( savedPerson => {
         res.json(savedPerson)
     }).catch(e => next(e))
 })
 
-app.get('/info', (req, res, next) => {
+app.get('/info', (req, res) => {
     Person.find({}).then(persons => {
         let text = ''
         text += `The phonebook has ${persons.length} contacts <br>`
@@ -74,7 +73,6 @@ app.get('/info', (req, res, next) => {
 
 app.put('/api/persons/:id', (request, response, next) => {
     const body = request.body
-    
     const person = {
       name: body.name,
       number: body.number
@@ -85,7 +83,6 @@ app.put('/api/persons/:id', (request, response, next) => {
       })
       .catch(error => next(error))
 })
-  
 const PORT = process.env.PORT
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
@@ -94,19 +91,15 @@ app.listen(PORT, () => {
 const unknownEndpoint = (request, response) => {
     response.status(404).send({ error: 'unknown endpoint' })
 }
-  
 app.use(unknownEndpoint)
 
 const errorHandler = (error, request, response, next) => {
     console.error(error.message)
-  
     if (error.name === 'CastError') {
       return response.status(400).send({ error: 'malformatted id' })
     } else if (error.name === 'ValidationError') {
         return response.status(400).json({ error: error.message })
     }
-  
     next(error)
 }
-  
 app.use(errorHandler)
