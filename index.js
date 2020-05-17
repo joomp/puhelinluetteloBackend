@@ -54,31 +54,13 @@ app.delete('/api/persons/:id', (req, res, next) => {
 })
 
 app.post('/api/persons', (req, res, next) => {
-    if (!req.body.name) {
-        return res.status(400).json({ 
-          error: 'Name missing' 
-        })
-    } else if (!req.body.number){
-        return res.status(400).json({ 
-            error: 'Number missing' 
-        })
-    } else {
-        Person.find({name: req.body.name}).then(person => {
-            if (person.length){
-                return res.status(400).json({ 
-                    error: 'The name is already in the phonebook' 
-                })
-            }else {
-                const newPerson = new Person({
-                    name: req.body.name,
-                    number: req.body.number
-                })
-                newPerson.save().then( savedPerson =>{
-                    res.json(savedPerson)
-                })
-            }
-        })
-    }
+    const newPerson = new Person({
+        name: req.body.name,
+        number: req.body.number
+    })
+    newPerson.save().then( savedPerson =>{
+        res.json(savedPerson)
+    }).catch(e => next(e))
 })
 
 app.get('/info', (req, res, next) => {
