@@ -12,9 +12,9 @@ const app = express()
 
 app.use(express.static('build'))
 app.use(express.json())
+app.use(middleware.requestLogger)
 app.use('/api/persons', personsRouter)
 app.use(cors())
-app.use(middleware.requestLogger)
 
 const url = config.MONGODB_URI
 
